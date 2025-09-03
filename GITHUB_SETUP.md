@@ -1,13 +1,14 @@
-# GitHub Repository Setup für Pi5 Heizungs Messer
-# =================================================
+# 🚀 GitHub Auto-Deploy Setup Guide
+# ==================================
 
-## 🚀 Repository zu GitHub hochladen
+## ⚡ Ein-Befehl Installation auf Pi5
 
-### Option 1: Über GitHub Web Interface (Empfohlen)
+### Direkt auf dem Pi5 ausführen:
+```bash
+curl -fsSL https://raw.githubusercontent.com/OliverRebock/finaler_heizung_ausleser/main/scripts/github_deploy.sh | bash
+```
 
-1. **Gehe zu GitHub.com** und melde dich an
-2. **Klicke auf "New repository"** (grüner Button)
-3. **Repository Settings:**
+**Das war's! Komplett automatische Installation von GitHub.** 🎉
    - Repository name: `pi5-heizungs-messer` oder `Heizung_auslesen`
    - Description: `Python-based heating monitoring system for Raspberry Pi 5 with MQTT/InfluxDB integration`
    - Visibility: `Public` oder `Private` (deine Wahl)

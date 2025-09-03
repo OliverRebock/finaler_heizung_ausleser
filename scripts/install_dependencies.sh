@@ -13,6 +13,16 @@ if [[ ! -f /proc/device-tree/model ]] || ! grep -q "Raspberry Pi" /proc/device-t
     echo "   Script wird trotzdem fortgesetzt..."
 fi
 
+# Check if we're in the right directory
+if [ ! -f "requirements.txt" ]; then
+    echo "❌ Fehler: requirements.txt nicht gefunden"
+    echo "Bitte Script aus dem Projekt-Root-Verzeichnis ausführen"
+    echo ""
+    echo "🚀 Automatische Installation von GitHub:"
+    echo "curl -fsSL https://raw.githubusercontent.com/OliverRebock/finaler_heizung_ausleser/main/scripts/github_deploy.sh | bash"
+    exit 1
+fi
+
 # Prüfe Pi5 spezifisch
 if grep -q "Raspberry Pi 5" /proc/device-tree/model 2>/dev/null; then
     echo "✅ Raspberry Pi 5 erkannt"
@@ -53,8 +63,24 @@ else
 fi
 
 # Docker Compose
-if ! command -v docker-compose &> /dev/null; then
+if command -v docker-compose &> /dev/null; then
+    COMPOSE_VERSION=$(docker-compose --version | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+')
+    echo "✅ Docker Compose $COMPOSE_VERSION gefunden"
+    
+    # Version Check (mindestens 1.27.0 für health conditions)
+    if [[ $(echo "$COMPOSE_VERSION 1.27.0" | tr " " "\n" | sort -V | head -n1) == "1.27.0" ]]; then
+        echo "✅ Docker Compose Version kompatibel"
+    else
+        echo "⚠️ Docker Compose Version zu alt - aktualisieren empfohlen"
+        echo "Installiere neuere Version..."
+        sudo apt update
+        sudo apt install -y docker-compose
+    fi
+else
+    echo "❌ Docker Compose nicht gefunden"
+    echo "Installiere Docker Compose..."
     sudo apt install -y docker-compose
+    echo "✅ Docker Compose installiert"
 fi
 
 echo ""
