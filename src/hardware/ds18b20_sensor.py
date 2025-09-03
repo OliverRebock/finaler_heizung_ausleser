@@ -73,9 +73,15 @@ class DS18B20Reader:
             logger.info(f"🌡️ DS18B20 Sensoren erkannt: {ds18b20_sensors}")
             
             # Konfigurierte Sensoren verwenden falls vorhanden
-            if self.config and self.config.has_option('hardware', 'ds18b20_sensors'):
+            if (self.config and 
+                self.config.has_section('hardware') and 
+                self.config.has_option('hardware', 'ds18b20_sensors') and
+                self.config.get('hardware', 'ds18b20_sensors').strip()):
+                
                 configured_sensors = self.config.get('hardware', 'ds18b20_sensors').split(',')
                 configured_sensors = [s.strip() for s in configured_sensors if s.strip()]
+                
+                logger.info(f"🔧 Konfigurierte Sensoren: {configured_sensors}")
                 
                 # Nur konfigurierte Sensoren verwenden die auch physisch vorhanden sind
                 self.sensor_ids = [s for s in configured_sensors if s in ds18b20_sensors]
@@ -83,9 +89,12 @@ class DS18B20Reader:
                 if len(self.sensor_ids) != len(configured_sensors):
                     missing = set(configured_sensors) - set(self.sensor_ids)
                     logger.warning(f"⚠️ Konfigurierte Sensoren nicht gefunden: {missing}")
+                    
+                logger.info(f"✅ Verwende konfigurierte Sensoren: {self.sensor_ids}")
             else:
-                # Alle gefundenen Sensoren verwenden
+                # Alle gefundenen Sensoren verwenden (Auto-Discovery)
                 self.sensor_ids = ds18b20_sensors
+                logger.info(f"🔍 Auto-Discovery: Verwende alle gefundenen Sensoren")
             
             logger.info(f"📊 {len(self.sensor_ids)} DS18B20 Sensoren werden verwendet: {self.sensor_ids}")
             

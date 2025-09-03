@@ -38,7 +38,9 @@ def test_ds18b20_sensors(config=None):
     print("="*60)
     
     try:
-        reader = DS18B20Reader(config)
+        # Teste ohne Konfiguration für Auto-Discovery
+        print("🔍 Teste Auto-Discovery (ohne Konfiguration)...")
+        reader = DS18B20Reader(config=None)  # Erzwinge Auto-Discovery
         
         if reader.get_sensor_count() == 0:
             print("❌ Keine DS18B20 Sensoren gefunden!")
@@ -47,23 +49,41 @@ def test_ds18b20_sensors(config=None):
             print("   2. Verkabelung prüfen (GPIO4, 3.3V, GND)")
             print("   3. Pullup-Widerstand 4.7kΩ vorhanden?")
             print("   4. Sensoren angeschlossen?")
+            print("\n🔍 Direkte Überprüfung:")
+            print("   ls /sys/bus/w1/devices/")
             return False
         
-        # Alle Sensoren testen
-        test_results = reader.test_all_sensors()
+        print(f"✅ {reader.get_sensor_count()} DS18B20 Sensoren gefunden!")
         
-        # Ergebnis zusammenfassen
-        working_sensors = sum(test_results.values())
-        total_sensors = len(test_results)
+        # Sensor-IDs anzeigen
+        sensor_ids = reader.get_sensor_ids()
+        print("\n📋 Gefundene Sensor-IDs:")
+        for i, sensor_id in enumerate(sensor_ids, 1):
+            print(f"   {i}. {sensor_id}")
+        
+        # Alle Sensoren testen
+        print("\n🧪 Teste alle Sensoren...")
+        temperatures = reader.read_all_temperatures()
+        
+        # Ergebnis anzeigen
+        working_sensors = 0
+        total_sensors = len(temperatures)
+        
+        for sensor_id, temp in temperatures.items():
+            if temp is not None:
+                print(f"   ✅ {sensor_id}: {temp:.1f}°C")
+                working_sensors += 1
+            else:
+                print(f"   ❌ {sensor_id}: Lesefehler")
         
         if working_sensors == total_sensors:
-            print(f"✅ Alle {total_sensors} DS18B20 Sensoren funktional!")
+            print(f"\n✅ Alle {total_sensors} DS18B20 Sensoren funktional!")
             return True
         elif working_sensors > 0:
             print(f"⚠️ {working_sensors}/{total_sensors} DS18B20 Sensoren funktional")
             print("\n❌ Defekte Sensoren:")
-            for sensor_id, working in test_results.items():
-                if not working:
+            for sensor_id, temp in temperatures.items():
+                if temp is None:
                     print(f"   {sensor_id}")
             return False
         else:
