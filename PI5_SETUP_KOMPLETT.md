@@ -94,11 +94,11 @@ Hinweis: Alle 8x DS18B20 parallel an denselben 1-Wire Bus!
 ```
 Anschluss Schema:
 DHT22 Pin 1 (VDD)  → Pi Pin 1  (3.3V)
-DHT22 Pin 2 (DATA) → Pi Pin 11 (GPIO 17) + 10kΩ Pull-up zu 3.3V
+DHT22 Pin 2 (DATA) → Pi Pin 12 (GPIO 18) + 10kΩ Pull-up zu 3.3V
 DHT22 Pin 3 (NC)   → Nicht angeschlossen
 DHT22 Pin 4 (GND)  → Pi Pin 6  (GND)
 
-⚠️ WICHTIG: GPIO 17 verwenden, NICHT GPIO 18!
+⚠️ WICHTIG: GPIO 18 (Pin 12) verwenden!
 ```
 
 ### 3.3 Hardware-Test (vor Software)
