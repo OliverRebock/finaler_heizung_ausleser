@@ -1,0 +1,23 @@
+# Pi5 Heizungs Messer Dependencies
+# =====================================
+
+# Hardware Interface
+adafruit-circuitpython-dht==3.7.9
+w1thermsensor==2.0.0
+
+# Data Storage & Querying
+influxdb-client==1.38.0
+
+# MQTT Communication
+paho-mqtt==1.6.1
+
+# Configuration & Utilities
+python-dotenv==1.0.0
+configparser
+
+# Logging & Monitoring
+logging
+
+# Development & Testing
+pytest==7.4.3
+pytest-cov==4.1.0
