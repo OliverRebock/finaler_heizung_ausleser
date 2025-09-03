@@ -136,14 +136,34 @@ def test_dht22_fallback():
     try:
         # Versuche verschiedene DHT22 Libraries
         
-        # Methode 1: Adafruit CircuitPython (mit Permission Check)
+        # Methode 1: Adafruit CircuitPython (mit korrektem Pin-Mapping)
         try:
             print("   🔄 Teste Adafruit CircuitPython DHT...")
             import board
             import adafruit_dht
             
+            # GPIO Pin Mapping für Raspberry Pi
+            gpio_to_board_mapping = {
+                4: board.D4,
+                17: board.D17,
+                18: board.D18,
+                22: board.D22,
+                23: board.D23,
+                24: board.D24,
+                25: board.D25,
+                27: board.D27
+            }
+            
+            if gpio_pin not in gpio_to_board_mapping:
+                print(f"   ❌ GPIO{gpio_pin} nicht in Board-Mapping unterstützt")
+                print(f"   💡 Unterstützte Pins: {list(gpio_to_board_mapping.keys())}")
+                raise ValueError(f"GPIO{gpio_pin} nicht unterstützt")
+            
+            board_pin = gpio_to_board_mapping[gpio_pin]
+            print(f"   📍 Verwende GPIO{gpio_pin} -> {board_pin}")
+            
             # Versuche DHT22 zu initialisieren
-            dht = adafruit_dht.DHT22(getattr(board, f'D{gpio_pin}'))
+            dht = adafruit_dht.DHT22(board_pin)
             
             for attempt in range(5):
                 try:
