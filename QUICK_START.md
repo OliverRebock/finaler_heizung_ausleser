@@ -1,65 +1,185 @@
-# Pi5 Heizungs-Messer - Quick Start Guide
-# ========================================
+# 🏠 Pi5 Heizungs-Messer - Von Null auf Hundert!
+# ===============================================
 
-## 🎯 Sofortige Kompatibilität bestätigt!
+## 🎯 KOMPLETTER NEU-SETUP für Raspberry Pi 5
 
-**Deine Docker-Versionen sind vollständig kompatibel:**
-- ✅ Docker 20.10.24 - Alle Features unterstützt
-- ✅ Docker Compose 1.29.2 - Schema 3.8 vollständig kompatibel
-- ✅ Keine Änderungen nötig!
+Diese Anleitung führt dich von einem frischen Pi5 zur voll funktionsfähigen Heizungs-Überwachung!
 
-## 🚀 Schnellstart (3 Schritte)
+## 📋 Hardware-Vorbereitung
 
-### 1. Dependencies installieren
+**Sensoren anschließen:**
+- 🌡️ **8x DS18B20** → 1-Wire Bus an **GPIO 4** (Pin 7)
+- 🌡️💧 **1x DHT22** → Digital Pin an **GPIO 17** (Pin 11) ⚠️ NICHT GPIO 18!
+- 🔌 **3.3V & GND** → Entsprechende Pins
+
+## ⚡ SCHRITT 1: Raspberry Pi 5 Grundsetup
+
+### 1.1 System aktualisieren
 ```bash
-cd /pfad/zum/projekt
+sudo apt update && sudo apt upgrade -y
+sudo reboot
+```
+
+### 1.2 Git und Python installieren
+```bash
+sudo apt install -y git python3 python3-pip python3-venv
+```
+
+### 1.3 1-Wire Interface aktivieren
+```bash
+sudo raspi-config
+# → Interface Options → 1-Wire → Enable → Yes → Finish
+sudo reboot
+```
+
+### 1.4 GPIO Permissions einrichten
+```bash
+sudo usermod -aG gpio pi
+sudo usermod -aG i2c pi
+sudo reboot
+```
+
+## ⚡ SCHRITT 2: Projekt herunterladen
+
+### 2.1 Repository klonen
+```bash
+cd /home/pi
+git clone https://github.com/OliverRebock/finaler_heizung_ausleser.git Heizung_auslesen
+cd Heizung_auslesen
+```
+
+### 2.2 Dependencies installieren
+```bash
 bash scripts/install_dependencies.sh
 ```
 
-### 2. Docker Services starten
+## ⚡ SCHRITT 3: Hardware testen
+
+### 3.1 DS18B20 Sensoren prüfen (sollten funktionieren)
 ```bash
+python3 scripts/test_sensors_direct.py
+```
+
+### 3.2 DHT22 sicher testen (falls Probleme)
+```bash
+python3 scripts/test_dht22_safe.py
+```
+
+## ⚡ SCHRITT 4: Docker Services
+
+### 4.1 Docker installieren (falls nicht vorhanden)
+```bash
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+sudo usermod -aG docker pi
+sudo reboot
+```
+
+### 4.2 Services starten
+```bash
+cd /home/pi/Heizung_auslesen
 bash scripts/deploy_docker.sh
 ```
 
-### 3. Sensoren testen
+### 4.3 Services prüfen
 ```bash
-source venv/bin/activate
-python scripts/test_sensors.py
+cd config
+docker-compose ps
 ```
 
-## 📊 Service URLs
+## ⚡ SCHRITT 5: Konfiguration
 
-Nach dem Start verfügbar:
-- **InfluxDB**: http://localhost:8086
-- **Grafana**: http://localhost:3000
+### 5.1 InfluxDB Setup (Erststart)
+```bash
+# Browser: http://PI_IP_ADRESSE:8086
+# Username: admin
+# Password: admin123
+# Organization: HeizungsMesher
+# Bucket: heating_data
+```
 
-## 🔧 Schnelle Docker-Befehle
+### 5.2 Sensor-Reader starten
+```bash
+cd /home/pi/Heizung_auslesen
+source venv/bin/activate
+python src/sensor_reader.py
+```
+
+## 📊 Wichtige URLs
+
+- **InfluxDB**: http://PI_IP_ADRESSE:8086
+- **Grafana**: http://PI_IP_ADRESSE:3000 (admin/admin123)
+
+## 🔧 Docker Befehle
 
 ```bash
-# In das config/ Verzeichnis wechseln
-cd config/
+cd /home/pi/Heizung_auslesen/config
 
 # Services starten
 docker-compose up -d
 
-# Status prüfen
+# Status prüfen  
 docker-compose ps
 
 # Logs anzeigen
-docker-compose logs -f
+docker-compose logs -f influxdb
+docker-compose logs -f grafana
 
 # Services stoppen
 docker-compose down
 
-# Container neu starten
+# Services neu starten
 docker-compose restart
 ```
 
-## ⚡ Optimierte Performance für Pi5
+## 🚨 Troubleshooting
 
-Das Projekt ist speziell für den Raspberry Pi 5 optimiert:
+### Problem: DS18B20 nicht erkannt
+```bash
+# 1-Wire Module prüfen
+lsmod | grep w1
+# Falls leer:
+sudo modprobe w1-gpio w1-therm
 
-- **Memory Usage**: ~500MB-1GB (für 8GB Pi5 perfekt)
+# Devices prüfen
+ls -la /sys/bus/w1/devices/
+```
+
+### Problem: DHT22 hängt
+```bash
+# Sichere Tests verwenden
+python3 scripts/test_dht22_safe.py
+python3 scripts/test_dht22_simple.py
+
+# GPIO Fix anwenden
+bash scripts/fix_gpio_permissions.sh
+sudo reboot
+```
+
+### Problem: Docker Services starten nicht
+```bash
+# Docker Status prüfen
+sudo systemctl status docker
+
+# Docker neu starten
+sudo systemctl restart docker
+
+# Disk Space prüfen
+df -h
+```
+
+## 🎯 Erwartete Ergebnisse
+
+### ✅ Erfolgreicher Setup:
+- 8x DS18B20 Sensoren erkannt
+- DHT22 liefert Temperatur + Luftfeuchtigkeit
+- InfluxDB sammelt alle 30 Sekunden Daten
+- Grafana zeigt Live-Dashboards
+
+### 📈 Performance für Pi5:
+- **Memory**: ~500MB-1GB
+- **CPU**: <10% bei normalem Betrieb
+- **Storage**: ~2GB für Logs und Daten
 - **Startup Time**: ~30-60 Sekunden
 - **CPU Load**: Minimal durch effiziente Sensor-Abfrage
 - **Storage**: SSD empfohlen für bessere InfluxDB Performance
