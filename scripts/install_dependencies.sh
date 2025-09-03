@@ -7,12 +7,6 @@ set -e
 echo "🏠 Pi5 Heizungs Messer - Installation Script"
 echo "============================================="
 
-# Prüfe ob auf Raspberry Pi ausgeführt
-if [[ ! -f /proc/device-tree/model ]] || ! grep -q "Raspberry Pi" /proc/device-tree/model 2>/dev/null; then
-    echo "⚠️ Warnung: Nicht auf Raspberry Pi erkannt"
-    echo "   Script wird trotzdem fortgesetzt..."
-fi
-
 # Check if we're in the right directory
 if [ ! -f "requirements.txt" ]; then
     echo "❌ Fehler: requirements.txt nicht gefunden"
@@ -23,9 +17,20 @@ if [ ! -f "requirements.txt" ]; then
     exit 1
 fi
 
-# Prüfe Pi5 spezifisch
+# Prüfe ob auf Raspberry Pi ausgeführt
+if [[ ! -f /proc/device-tree/model ]] || ! grep -q "Raspberry Pi" /proc/device-tree/model 2>/dev/null; then
+    echo "⚠️ Warnung: Nicht auf Raspberry Pi erkannt"
+    echo "   Script wird trotzdem fortgesetzt..."
+else
+    PI_MODEL=$(cat /proc/device-tree/model | tr -d '\0')
+    echo "✅ Erkannt: $PI_MODEL"
+fi
+
+# Prüfe für Pi5 spezifische Konfiguration
+PI5_DETECTED=false
 if grep -q "Raspberry Pi 5" /proc/device-tree/model 2>/dev/null; then
-    echo "✅ Raspberry Pi 5 erkannt"
+    echo "🚀 Raspberry Pi 5 erkannt - optimierte Konfiguration"
+    PI5_DETECTED=true
 else
     echo "⚠️ Warnung: Nicht Pi5 erkannt - GPIO Pinout könnte abweichen"
 fi
@@ -44,8 +49,45 @@ echo "🔧 Installiere Hardware Dependencies..."
 # GPIO Library für DHT22
 sudo apt install -y python3-gpiozero python3-rpi.gpio
 
-# 1-Wire Support für DS18B20
-sudo apt install -y w1-gpio w1-therm
+# 1-Wire Support für DS18B20 (Kernel Module, nicht Packages)
+echo "🌡️ Konfiguriere 1-Wire Interface für DS18B20..."
+
+# 1-Wire Module laden
+sudo modprobe w1-gpio 2>/dev/null || echo "w1-gpio bereits geladen"
+sudo modprobe w1-therm 2>/dev/null || echo "w1-therm bereits geladen"
+
+# Module bei Boot laden
+if ! grep -q "w1-gpio" /etc/modules 2>/dev/null; then
+    echo "w1-gpio" | sudo tee -a /etc/modules
+    echo "✅ w1-gpio zu /etc/modules hinzugefügt"
+fi
+if ! grep -q "w1-therm" /etc/modules 2>/dev/null; then
+    echo "w1-therm" | sudo tee -a /etc/modules
+    echo "✅ w1-therm zu /etc/modules hinzugefügt"
+fi
+
+# Device Tree Overlay aktivieren
+REBOOT_REQUIRED=false
+if [ -f "/boot/config.txt" ]; then
+    if ! grep -q "dtoverlay=w1-gpio" /boot/config.txt; then
+        echo "dtoverlay=w1-gpio" | sudo tee -a /boot/config.txt
+        echo "✅ 1-Wire Interface in /boot/config.txt aktiviert"
+        REBOOT_REQUIRED=true
+    else
+        echo "✅ 1-Wire Interface bereits in config.txt aktiviert"
+    fi
+elif [ -f "/boot/firmware/config.txt" ]; then
+    # Ubuntu 22.04+ auf Pi verwendet /boot/firmware/
+    if ! grep -q "dtoverlay=w1-gpio" /boot/firmware/config.txt; then
+        echo "dtoverlay=w1-gpio" | sudo tee -a /boot/firmware/config.txt
+        echo "✅ 1-Wire Interface in /boot/firmware/config.txt aktiviert"
+        REBOOT_REQUIRED=true
+    else
+        echo "✅ 1-Wire Interface bereits in firmware config.txt aktiviert"
+    fi
+else
+    echo "⚠️ Boot config.txt nicht gefunden - manuelle 1-Wire Aktivierung erforderlich"
+fi
 
 echo ""
 echo "📡 Installiere MQTT Client Tools..."
@@ -58,6 +100,7 @@ if ! command -v docker &> /dev/null; then
     sudo sh get-docker.sh
     sudo usermod -aG docker $USER
     echo "✅ Docker installiert - Neuanmeldung erforderlich für Docker-Gruppe"
+    rm -f get-docker.sh
 else
     echo "✅ Docker bereits installiert"
 fi
@@ -101,32 +144,11 @@ pip install --upgrade pip
 pip install -r requirements.txt
 
 echo ""
-echo "⚙️ Konfiguriere 1-Wire Interface..."
-
-# 1-Wire in /boot/config.txt aktivieren
-CONFIG_TXT="/boot/config.txt"
-if [ -f "$CONFIG_TXT" ]; then
-    if ! grep -q "dtoverlay=w1-gpio" "$CONFIG_TXT"; then
-        echo "dtoverlay=w1-gpio" | sudo tee -a "$CONFIG_TXT"
-        echo "✅ 1-Wire Interface in config.txt aktiviert"
-    else
-        echo "✅ 1-Wire Interface bereits aktiviert"
-    fi
-else
-    echo "⚠️ /boot/config.txt nicht gefunden - manuelle 1-Wire Aktivierung erforderlich"
-fi
-
-# 1-Wire Module laden
-sudo modprobe w1-gpio
-sudo modprobe w1-therm
-
-echo ""
 echo "📋 Erstelle Konfigurationsdatei..."
 if [ ! -f "config.ini" ]; then
     if [ -f "config/config.ini.example" ]; then
         cp config/config.ini.example config.ini
         echo "✅ config.ini aus Beispiel erstellt"
-        echo "🔧 Bitte config.ini bearbeiten und anpassen!"
     else
         echo "⚠️ Beispiel-Konfiguration nicht gefunden"
     fi
@@ -135,51 +157,62 @@ else
 fi
 
 echo ""
-echo "🗄️ Starte InfluxDB Container..."
-if [ -f "config/docker-compose.yml" ]; then
-    cd config
-    docker-compose up -d
-    cd ..
-    
-    echo "⏳ Warte auf InfluxDB..."
-    sleep 10
-    
-    # Health Check
-    if curl -s http://localhost:8086/health > /dev/null; then
-        echo "✅ InfluxDB Container läuft"
-    else
-        echo "⚠️ InfluxDB Container Status unbekannt"
-    fi
-else
-    echo "⚠️ docker-compose.yml nicht gefunden"
-fi
-
-echo ""
-echo "🧪 Führe Basis-Tests durch..."
-python scripts/test_sensors.py --influxdb
-
-echo ""
-echo "🎉 Installation abgeschlossen!"
+echo "✅ INSTALLATION ABGESCHLOSSEN!"
 echo "==============================="
 echo ""
+
+# Zeige 1-Wire Status
+echo "🔍 1-Wire Status prüfen..."
+if [ -d "/sys/bus/w1/devices" ]; then
+    DEVICE_COUNT=$(ls /sys/bus/w1/devices/ | grep -c "28-" 2>/dev/null || echo "0")
+    if [ "$DEVICE_COUNT" -gt 0 ]; then
+        echo "✅ $DEVICE_COUNT DS18B20 Sensor(en) erkannt:"
+        ls /sys/bus/w1/devices/ | grep "28-" | head -3
+    else
+        echo "⚠️ Keine DS18B20 Sensoren erkannt"
+        echo "   Prüfe Hardware-Verkabelung"
+        if [ "$REBOOT_REQUIRED" = "true" ]; then
+            echo "   Reboot erforderlich für 1-Wire Interface"
+        fi
+    fi
+else
+    echo "⚠️ 1-Wire Interface nicht aktiv"
+    if [ "$REBOOT_REQUIRED" = "true" ]; then
+        echo "   REBOOT erforderlich: sudo reboot"
+    fi
+fi
+
+echo ""
 echo "📋 Nächste Schritte:"
-echo "   1. config.ini bearbeiten (Sensor-IDs, MQTT-Einstellungen)"
-echo "   2. Sensoren testen: python scripts/test_sensors.py"
-echo "   3. MQTT für Home Assistant einrichten"
-echo "   4. Sensor Reader starten: python src/sensor_reader.py"
+echo "   1. Hardware anschließen (DS18B20 an GPIO, DHT22 an GPIO 4)"
+if [ "$REBOOT_REQUIRED" = "true" ]; then
+    echo "   2. System neu starten: sudo reboot"
+    echo "   3. Nach Reboot: bash scripts/deploy_docker.sh"
+else
+    echo "   2. Docker Services starten: bash scripts/deploy_docker.sh"
+fi
+echo "   4. Sensoren testen: python scripts/test_sensors.py"
+echo "   5. Konfiguration anpassen: nano config/config.ini"
+echo "   6. Service starten: python src/sensor_reader.py"
 echo ""
 echo "🔧 Wichtige Befehle:"
-echo "   python scripts/test_sensors.py      # Alle Tests"
-echo "   python src/sensor_reader.py --once  # Einmalige Messung"
-echo "   python src/mqtt_bridge.py test      # MQTT Test"
+echo "   python scripts/test_sensors.py      # Hardware-Test"
+echo "   bash scripts/deploy_docker.sh       # Docker Services"
+echo "   docker-compose -f config/docker-compose.yml ps  # Container Status"
 echo ""
-echo "🌐 Web Interfaces:"
-echo "   InfluxDB: http://localhost:8086 (admin/password123)"
-echo "   Grafana:  http://localhost:3000 (admin/admin)"
+echo "🌐 Nach Docker-Start verfügbar:"
+echo "   InfluxDB: http://$(hostname -I | awk '{print $1}'):8086"
+echo "   Grafana:  http://$(hostname -I | awk '{print $1}'):3000"
 echo ""
 
-# Neustart Empfehlung falls 1-Wire geändert wurde
-if ! grep -q "dtoverlay=w1-gpio" /boot/config.txt 2>/dev/null || [ ! -d "/sys/bus/w1/devices" ]; then
-    echo "⚠️ NEUSTART ERFORDERLICH für 1-Wire Interface!"
+# Reboot-Hinweis
+if [ "$REBOOT_REQUIRED" = "true" ]; then
+    echo "🔄 WICHTIG: Reboot erforderlich für 1-Wire Interface!"
     echo "   sudo reboot"
+    echo ""
+    echo "Nach dem Reboot fortfahren mit:"
+    echo "   cd $(pwd)"
+    echo "   bash scripts/deploy_docker.sh"
 fi
+
+echo "🎉 Installation erfolgreich abgeschlossen!"
