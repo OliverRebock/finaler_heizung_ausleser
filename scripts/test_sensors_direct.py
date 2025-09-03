@@ -118,15 +118,31 @@ def test_dht22_fallback():
     print("\n🌡️💧 DHT22 Sensor Test:")
     print("-" * 30)
     
+    gpio_pin = 4  # Standard GPIO Pin
+    
+    # Prüfe GPIO Permissions
+    print(f"🔍 Prüfe GPIO Pin {gpio_pin} Zugriff...")
+    
+    # GPIO Permission Test
+    gpio_export_path = "/sys/class/gpio/export"
+    gpio_pin_path = f"/sys/class/gpio/gpio{gpio_pin}"
+    
+    if not os.access(gpio_export_path, os.W_OK):
+        print(f"❌ Keine GPIO Schreibberechtigung")
+        print(f"   Lösung: sudo usermod -aG gpio $USER")
+        print(f"   Oder Script als sudo ausführen")
+        return False
+    
     try:
         # Versuche verschiedene DHT22 Libraries
-        gpio_pin = 4  # Standard GPIO Pin
         
-        # Methode 1: Adafruit CircuitPython
+        # Methode 1: Adafruit CircuitPython (mit Permission Check)
         try:
+            print("   🔄 Teste Adafruit CircuitPython DHT...")
             import board
             import adafruit_dht
             
+            # Versuche DHT22 zu initialisieren
             dht = adafruit_dht.DHT22(getattr(board, f'D{gpio_pin}'))
             
             for attempt in range(5):
@@ -136,27 +152,78 @@ def test_dht22_fallback():
                     
                     if temperature is not None and humidity is not None:
                         print(f"   ✅ Adafruit DHT22: {temperature:.1f}°C, {humidity:.1f}% rH")
+                        dht.exit()
                         return True
                 except RuntimeError as e:
-                    if attempt < 4:
+                    if "GPIO" in str(e) and "input" in str(e):
+                        print(f"   ❌ GPIO Permission Error: {e}")
+                        print(f"   💡 Lösungen:")
+                        print(f"      1. sudo usermod -aG gpio pi && sudo reboot")
+                        print(f"      2. Script als sudo ausführen")
+                        print(f"      3. GPIO Permissions prüfen: ls -la /dev/gpiomem")
+                        dht.exit()
+                        return False
+                    elif attempt < 4:
+                        print(f"   ⚠️ Versuch {attempt + 1}: {e}")
                         time.sleep(2)
-                    continue
+                        continue
+                    else:
+                        print(f"   ❌ DHT22 Timeout nach {attempt + 1} Versuchen")
+            
+            dht.exit()
             
         except ImportError:
             print("   ⚠️ Adafruit CircuitPython DHT nicht verfügbar")
         except Exception as e:
             print(f"   ❌ Adafruit DHT22 Fehler: {e}")
         
-        # Methode 2: RPi.GPIO mit DHT Implementation
+        # Methode 2: System-Tools Fallback
         try:
-            print("   🔄 Teste alternative DHT22 Implementierung...")
-            # Placeholder für alternative DHT22 Implementierung
-            print("   ⚠️ Alternative DHT22 Implementierung noch nicht verfügbar")
+            print("   🔄 Teste System-Tools Alternative...")
             
+            # Prüfe ob DHT-Tools installiert sind
+            import subprocess
+            result = subprocess.run(['which', 'dht22'], capture_output=True, text=True)
+            
+            if result.returncode == 0:
+                print("   ✅ System DHT-Tools gefunden")
+                # Hier könnte DHT-Tool aufgerufen werden
+                print("   ⚠️ System DHT-Tool Test noch nicht implementiert")
+            else:
+                print("   ⚠️ Keine System DHT-Tools gefunden")
+                
         except Exception as e:
-            print(f"   ❌ Alternative DHT22 Fehler: {e}")
+            print(f"   ❌ System-Tools Fehler: {e}")
         
-        print("   ❌ DHT22 Sensor nicht erreichbar")
+        # Methode 3: GPIO Direct Access (nur für Test)
+        try:
+            print("   🔄 Teste direkten GPIO Zugriff...")
+            
+            # Test ob GPIO Pin exportiert werden kann
+            if not os.path.exists(gpio_pin_path):
+                with open(gpio_export_path, 'w') as f:
+                    f.write(str(gpio_pin))
+                print(f"   ✅ GPIO Pin {gpio_pin} exportiert")
+                
+                # Cleanup
+                time.sleep(0.1)
+                with open("/sys/class/gpio/unexport", 'w') as f:
+                    f.write(str(gpio_pin))
+                print(f"   🧹 GPIO Pin {gpio_pin} freigegeben")
+            else:
+                print(f"   ℹ️ GPIO Pin {gpio_pin} bereits exportiert")
+            
+            print("   ✅ GPIO Zugriff grundsätzlich möglich")
+            print("   ⚠️ DHT22 Implementierung über direkten GPIO noch nicht verfügbar")
+            
+        except PermissionError:
+            print(f"   ❌ GPIO Permission denied")
+            print(f"   💡 Lösung: sudo usermod -aG gpio $USER && sudo reboot")
+            return False
+        except Exception as e:
+            print(f"   ❌ GPIO Test Fehler: {e}")
+        
+        print("   ❌ DHT22 Sensor nicht erreichbar oder Permission-Problem")
         return False
         
     except Exception as e:
@@ -217,11 +284,18 @@ def main():
     print(f"   DHT22 Sensor: {'✅' if dht22_ok else '❌'}")
     
     if ds18b20_ok:
-        print("\n🎉 Mindestens ein Sensor funktioniert!")
-        print("💡 Nächste Schritte:")
-        print("   1. config.ini anpassen")
-        print("   2. Docker Services starten: bash scripts/deploy_docker.sh")
-        print("   3. Sensor Reader starten: python src/sensor_reader.py")
+        print("\n🎉 DS18B20 Sensoren funktionieren perfekt!")
+        if not dht22_ok:
+            print("\n⚠️ DHT22 Problem (GPIO Permissions):")
+            print("💡 Lösungen:")
+            print("   1. bash scripts/fix_gpio_permissions.sh")
+            print("   2. sudo reboot")
+            print("   3. Temporär: sudo python scripts/test_sensors_direct.py")
+        
+        print("\n💡 Nächste Schritte:")
+        print("   1. config.ini anpassen (Sensor-IDs eintragen)")
+        print("   2. Docker Services: bash scripts/deploy_docker.sh")
+        print("   3. Sensor Reader: python src/sensor_reader.py")
     else:
         print("\n⚠️ Keine funktionierenden Sensoren gefunden!")
         print("🔧 Troubleshooting:")
