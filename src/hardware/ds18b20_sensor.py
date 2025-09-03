@@ -62,11 +62,15 @@ class DS18B20Reader:
         """Automatische Sensor-Erkennung"""
         try:
             if not os.path.exists(self.w1_device_path):
+                logger.warning(f"W1 Device Path nicht gefunden: {self.w1_device_path}")
                 return
             
             # Alle DS18B20 Sensoren finden (beginnen mit "28-")
             devices = os.listdir(self.w1_device_path)
             ds18b20_sensors = [d for d in devices if d.startswith("28-")]
+            
+            logger.info(f"🔍 Gefundene W1-Devices: {devices}")
+            logger.info(f"🌡️ DS18B20 Sensoren erkannt: {ds18b20_sensors}")
             
             # Konfigurierte Sensoren verwenden falls vorhanden
             if self.config and self.config.has_option('hardware', 'ds18b20_sensors'):
@@ -83,18 +87,19 @@ class DS18B20Reader:
                 # Alle gefundenen Sensoren verwenden
                 self.sensor_ids = ds18b20_sensors
             
-            logger.info(f"📊 {len(self.sensor_ids)} DS18B20 Sensoren gefunden: {self.sensor_ids}")
+            logger.info(f"📊 {len(self.sensor_ids)} DS18B20 Sensoren werden verwendet: {self.sensor_ids}")
             
             # Sensor Tests
             for sensor_id in self.sensor_ids:
                 temp = self.read_temperature(sensor_id)
                 if temp is not None:
-                    logger.info(f"   {sensor_id}: {temp:.1f}°C")
+                    logger.info(f"   ✅ {sensor_id}: {temp:.1f}°C")
                 else:
-                    logger.warning(f"   {sensor_id}: Lesefehler")
+                    logger.warning(f"   ❌ {sensor_id}: Lesefehler")
                     
         except Exception as e:
             logger.error(f"❌ Fehler bei Sensor-Erkennung: {e}")
+            logger.error(f"   Prüfe 1-Wire Interface und Sensor-Verkabelung")
     
     def read_temperature(self, sensor_id: str) -> Optional[float]:
         """Temperatur von spezifischem Sensor lesen"""
