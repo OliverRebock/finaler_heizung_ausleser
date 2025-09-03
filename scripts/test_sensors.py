@@ -103,18 +103,20 @@ def test_dht22_sensor(config=None):
     
     try:
         # GPIO Pin aus Config lesen
-        gpio_pin = 17
+        gpio_pin = 18  # Standard GPIO Pin für DHT22
         if config and config.has_option('hardware', 'dht22_gpio'):
             gpio_pin = config.getint('hardware', 'dht22_gpio')
         
+        print(f"🔍 Teste DHT22 an GPIO{gpio_pin}...")
         reader = DHT22Reader(gpio_pin=gpio_pin)
         
         if not reader.dht_device:
             print("❌ DHT22 Sensor nicht verfügbar!")
             print(f"\n🔧 Troubleshooting (GPIO{gpio_pin}):")
             print("   1. DHT Library installiert? (pip install adafruit-circuitpython-dht)")
-            print("   2. Verkabelung prüfen (GPIO17, 3.3V, GND)")
-            print("   3. Sensor defekt?")
+            print("   2. Verkabelung prüfen (GPIO18, 3.3V, GND)")
+            print("   3. GPIO Permissions: bash scripts/fix_gpio_permissions.sh")
+            print("   4. Sensor defekt?")
             return False
         
         # Sensor testen

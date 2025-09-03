@@ -118,7 +118,7 @@ def test_dht22_fallback():
     print("\n🌡️💧 DHT22 Sensor Test:")
     print("-" * 30)
     
-    gpio_pin = 4  # Standard GPIO Pin
+    gpio_pin = 18  # Standard GPIO Pin für DHT22
     
     # Prüfe GPIO Permissions
     print(f"🔍 Prüfe GPIO Pin {gpio_pin} Zugriff...")

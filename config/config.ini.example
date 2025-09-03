@@ -9,7 +9,7 @@ ds18b20_sensors =
 
 # DHT22 Temperatur/Luftfeuchtigkeit
 dht22_enabled = true
-dht22_gpio = 17
+dht22_gpio = 18
 
 [database]
 # InfluxDB Einstellungen

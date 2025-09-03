@@ -36,7 +36,7 @@ pip install -r requirements.txt
 - Pullup-Widerstand 4.7kΩ
 
 **DHT22 Sensor:**
-- Datenleitung an GPIO17
+- Datenleitung an GPIO18
 - 3.3V Versorgung
 - Pullup-Widerstand 10kΩ (meist integriert)
 

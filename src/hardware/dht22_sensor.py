@@ -31,7 +31,7 @@ class DHT22Reader:
     Temperatur und Luftfeuchtigkeit
     """
     
-    def __init__(self, gpio_pin: int = 17):
+    def __init__(self, gpio_pin: int = 18):
         """
         Initialisiere DHT22 Reader
         
