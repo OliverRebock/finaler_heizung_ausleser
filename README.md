@@ -17,7 +17,7 @@ Ein Python-basiertes Heizungsüberwachungssystem für Raspberry Pi 5 mit MQTT-In
 
 ```bash
 # Repository klonen
-git clone <your-repo-url> ~/pi5-sensors
+git clone https://github.com/OliverRebock/finaler_heizung_ausleser.git ~/pi5-sensors
 cd ~/pi5-sensors
 
 # Python Virtual Environment einrichten
