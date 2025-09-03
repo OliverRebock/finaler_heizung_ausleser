@@ -157,40 +157,75 @@ def test_dht22_fallback():
             if gpio_pin not in gpio_to_board_mapping:
                 print(f"   ❌ GPIO{gpio_pin} nicht in Board-Mapping unterstützt")
                 print(f"   💡 Unterstützte Pins: {list(gpio_to_board_mapping.keys())}")
-                raise ValueError(f"GPIO{gpio_pin} nicht unterstützt")
+                return False
             
             board_pin = gpio_to_board_mapping[gpio_pin]
             print(f"   📍 Verwende GPIO{gpio_pin} -> {board_pin}")
             
-            # Versuche DHT22 zu initialisieren
-            dht = adafruit_dht.DHT22(board_pin)
+            # Timeout für DHT22 Test
+            import signal
             
-            for attempt in range(5):
+            def timeout_handler(signum, frame):
+                raise TimeoutError("DHT22 Test Timeout")
+            
+            # 10 Sekunden Timeout setzen
+            signal.signal(signal.SIGALRM, timeout_handler)
+            signal.alarm(10)
+            
+            try:
+                # Versuche DHT22 zu initialisieren
+                dht = adafruit_dht.DHT22(board_pin)
+                
+                for attempt in range(3):
+                    try:
+                        print(f"   🔄 Messversuch {attempt + 1}/3...")
+                        temperature = dht.temperature
+                        humidity = dht.humidity
+                        
+                        if temperature is not None and humidity is not None:
+                            print(f"   ✅ Adafruit DHT22: {temperature:.1f}°C, {humidity:.1f}% rH")
+                            dht.exit()
+                            signal.alarm(0)  # Timeout zurücksetzen
+                            return True
+                    except RuntimeError as e:
+                        if "GPIO" in str(e) and ("input" in str(e) or "line" in str(e)):
+                            print(f"   ❌ GPIO Permission/Pin Error: {e}")
+                            print(f"   💡 Lösungen:")
+                            print(f"      1. sudo usermod -aG gpio pi && sudo reboot")
+                            print(f"      2. DHT22 an GPIO 17 anschließen (bessere Unterstützung)")
+                            print(f"      3. Script als sudo ausführen")
+                            dht.exit()
+                            signal.alarm(0)
+                            return False
+                        elif "Checksum" in str(e) or "timeout" in str(e).lower():
+                            print(f"   ⚠️ Versuch {attempt + 1}: Sensor-Timeout/Checksum")
+                            if attempt < 2:
+                                time.sleep(3)
+                                continue
+                        else:
+                            print(f"   ⚠️ Versuch {attempt + 1}: {e}")
+                            if attempt < 2:
+                                time.sleep(3)
+                                continue
+                
+                dht.exit()
+                signal.alarm(0)
+                print(f"   ❌ DHT22 antwortet nicht nach 3 Versuchen")
+                
+            except TimeoutError:
+                print(f"   ❌ DHT22 Test Timeout (>10s) - wahrscheinlich Hardware-Problem")
                 try:
-                    temperature = dht.temperature
-                    humidity = dht.humidity
-                    
-                    if temperature is not None and humidity is not None:
-                        print(f"   ✅ Adafruit DHT22: {temperature:.1f}°C, {humidity:.1f}% rH")
-                        dht.exit()
-                        return True
-                except RuntimeError as e:
-                    if "GPIO" in str(e) and "input" in str(e):
-                        print(f"   ❌ GPIO Permission Error: {e}")
-                        print(f"   💡 Lösungen:")
-                        print(f"      1. sudo usermod -aG gpio pi && sudo reboot")
-                        print(f"      2. Script als sudo ausführen")
-                        print(f"      3. GPIO Permissions prüfen: ls -la /dev/gpiomem")
-                        dht.exit()
-                        return False
-                    elif attempt < 4:
-                        print(f"   ⚠️ Versuch {attempt + 1}: {e}")
-                        time.sleep(2)
-                        continue
-                    else:
-                        print(f"   ❌ DHT22 Timeout nach {attempt + 1} Versuchen")
-            
-            dht.exit()
+                    dht.exit()
+                except:
+                    pass
+                signal.alarm(0)
+                return False
+            except Exception as e:
+                print(f"   ❌ DHT22 Initialisierung fehlgeschlagen: {e}")
+                signal.alarm(0)
+                return False
+            finally:
+                signal.alarm(0)  # Timeout immer zurücksetzen
             
         except ImportError:
             print("   ⚠️ Adafruit CircuitPython DHT nicht verfügbar")
