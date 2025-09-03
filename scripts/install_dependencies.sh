@@ -141,7 +141,36 @@ source venv/bin/activate
 echo ""
 echo "📥 Installiere Python Packages..."
 pip install --upgrade pip
-pip install -r requirements.txt
+
+# Versuche zuerst normale requirements.txt
+echo "🔄 Installiere Python Dependencies..."
+if pip install -r requirements.txt; then
+    echo "✅ Alle Dependencies erfolgreich installiert"
+else
+    echo "⚠️ Fehler bei requirements.txt - versuche alternative Installation..."
+    
+    # Fallback: Einzelne Pakete mit flexiblen Versionen
+    echo "📦 Installiere kritische Pakete einzeln..."
+    
+    # Core packages
+    pip install influxdb-client paho-mqtt python-dotenv
+    
+    # Hardware packages mit Fallback
+    if ! pip install "adafruit-circuitpython-dht>=4.0.0"; then
+        echo "⚠️ adafruit-circuitpython-dht Installationsfehler"
+        echo "   DHT22 wird über RPi.GPIO implementiert"
+    fi
+    
+    if ! pip install "w1thermsensor>=2.0.0"; then
+        echo "⚠️ w1thermsensor Installationsfehler"  
+        echo "   DS18B20 wird über direkten File-Access implementiert"
+    fi
+    
+    # Testing packages (optional)
+    pip install pytest pytest-cov || echo "⚠️ Test-Pakete übersprungen"
+    
+    echo "✅ Alternative Installation abgeschlossen"
+fi
 
 echo ""
 echo "📋 Erstelle Konfigurationsdatei..."

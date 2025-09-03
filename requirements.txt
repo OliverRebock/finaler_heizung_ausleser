@@ -2,7 +2,7 @@
 # =====================================
 
 # Hardware Interface
-adafruit-circuitpython-dht==3.7.9
+adafruit-circuitpython-dht==4.0.9
 w1thermsensor==2.0.0
 
 # Data Storage & Querying
@@ -13,11 +13,15 @@ paho-mqtt==1.6.1
 
 # Configuration & Utilities
 python-dotenv==1.0.0
-configparser
 
-# Logging & Monitoring
-logging
+# Logging & Monitoring (built-in modules)
+# logging - built-in
+# configparser - built-in
 
 # Development & Testing
 pytest==7.4.3
 pytest-cov==4.1.0
+
+# Additional GPIO alternatives (if needed)
+# RPi.GPIO  # Usually pre-installed on Raspberry Pi OS
+# gpiozero  # Usually pre-installed on Raspberry Pi OS

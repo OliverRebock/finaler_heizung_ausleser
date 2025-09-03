@@ -1,0 +1,27 @@
+# Pi5 Heizungs Messer Dependencies - Alternative/Minimal Version
+# ==============================================================
+# Diese Version für Installationsprobleme mit spezifischen Versionen
+
+# Hardware Interface - Flexible Versionen
+adafruit-circuitpython-dht>=4.0.0
+w1thermsensor>=2.0.0
+
+# Data Storage & Querying
+influxdb-client>=1.35.0
+
+# MQTT Communication  
+paho-mqtt>=1.6.0
+
+# Configuration & Utilities
+python-dotenv>=1.0.0
+
+# Development & Testing (optional)
+pytest>=7.0.0
+pytest-cov>=4.0.0
+
+# Pi5 GPIO Support (system packages preferred)
+# These are usually pre-installed on Raspberry Pi OS:
+# - RPi.GPIO 
+# - gpiozero
+# Install via apt if needed:
+# sudo apt install python3-rpi.gpio python3-gpiozero
