@@ -30,6 +30,23 @@ else
     echo "✅ Benutzer zur I2C-Gruppe hinzugefügt"
 fi
 
+# Cleanup bereits exportierte GPIO Pins
+echo ""
+echo "🧹 GPIO Cleanup..."
+
+cleanup_gpio() {
+    local gpio_num=$1
+    if [ -d "/sys/class/gpio/gpio${gpio_num}" ]; then
+        echo "   🔄 Cleanup GPIO ${gpio_num}..."
+        echo ${gpio_num} | sudo tee /sys/class/gpio/unexport > /dev/null 2>&1
+        echo "   ✅ GPIO ${gpio_num} freigegeben"
+    fi
+}
+
+# Cleanup DHT22 relevante Pins
+cleanup_gpio 17
+cleanup_gpio 18
+
 # SPI Gruppe (falls benötigt)
 if groups $USER | grep -q spi; then
     echo "✅ Benutzer ist bereits in SPI-Gruppe"
