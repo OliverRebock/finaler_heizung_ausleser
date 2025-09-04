@@ -13,10 +13,13 @@ import signal
 class SimpleDHT22:
     """Einfache DHT22 Klasse ohne externe Dependencies"""
     
-    def __init__(self, gpio_pin):
+    def __init__(self, gpio_pin, power_pin=None):
         self.gpio_pin = gpio_pin
+        self.power_pin = power_pin
         self.gpio_dir = f"/sys/class/gpio/gpio{gpio_pin}"
+        self.power_dir = f"/sys/class/gpio/gpio{power_pin}" if power_pin else None
         self.exported = False
+        self.power_exported = False
         
     def __enter__(self):
         """Context Manager - Setup"""
@@ -30,6 +33,20 @@ class SimpleDHT22:
     def setup(self):
         """GPIO Setup"""
         try:
+            # Power Pin setup (falls verwendet)
+            if self.power_pin and not os.path.exists(self.power_dir):
+                with open("/sys/class/gpio/export", "w") as f:
+                    f.write(str(self.power_pin))
+                self.power_exported = True
+                time.sleep(0.1)
+                
+                # Power Pin als Output und HIGH setzen
+                with open(f"{self.power_dir}/direction", "w") as f:
+                    f.write("out")
+                with open(f"{self.power_dir}/value", "w") as f:
+                    f.write("1")
+                print(f"   ✅ GPIO {self.power_pin} als Stromversorgung aktiviert")
+            
             # GPIO exportieren falls nötig
             if not os.path.exists(self.gpio_dir):
                 with open("/sys/class/gpio/export", "w") as f:
@@ -48,6 +65,9 @@ class SimpleDHT22:
             if self.exported and os.path.exists(self.gpio_dir):
                 with open("/sys/class/gpio/unexport", "w") as f:
                     f.write(str(self.gpio_pin))
+            if self.power_exported and self.power_dir and os.path.exists(self.power_dir):
+                with open("/sys/class/gpio/unexport", "w") as f:
+                    f.write(str(self.power_pin))
         except:
             pass
             
@@ -171,8 +191,36 @@ def test_simple_dht22(gpio_pin):
 
 
 if __name__ == "__main__":
-    print("🔧 Simple DHT22 Test")
-    print("=" * 30)
+    print("🔧 Simple DHT22 Test (Deine Verkabelung)")
+    print("=" * 45)
+    print("VDD (+): GPIO 17 (Pin 11)")
+    print("DATA:    GPIO 18 (Pin 12)")
+    print("GND:     Pin 39")
+    print()
     
-    gpio_pin = 18
-    test_simple_dht22(gpio_pin)
+    gpio_pin = 18  # DATA
+    power_pin = 17 # VDD
+    
+    try:
+        with SimpleDHT22(gpio_pin, power_pin) as dht:
+            print("   ✅ DHT22 Setup erfolgreich")
+            
+            # 3 Versuche
+            for attempt in range(3):
+                print(f"   📊 Versuch {attempt + 1}/3...")
+                
+                temp, hum, error = dht.read_data(timeout=3)
+                
+                if error:
+                    print(f"      ❌ {error}")
+                else:
+                    print(f"      ✅ Temp: {temp:.1f}°C, Humidity: {hum:.1f}%")
+                    break
+                
+                time.sleep(2)
+            else:
+                print("   ❌ Alle Versuche fehlgeschlagen")
+                print("   💡 Verkabelung prüfen oder auf Pin 1 (3.3V) umstecken")
+            
+    except Exception as e:
+        print(f"   ❌ DHT22 Test Fehler: {e}")

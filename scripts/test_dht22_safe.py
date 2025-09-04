@@ -10,6 +10,34 @@ import sys
 import time
 import subprocess
 
+def setup_gpio17_power():
+    """GPIO 17 als Stromversorgung für DHT22 aktivieren"""
+    print("🔌 Aktiviere GPIO 17 als DHT22 Stromversorgung...")
+    
+    gpio17_dir = "/sys/class/gpio/gpio17"
+    
+    try:
+        # GPIO 17 exportieren falls nötig
+        if not os.path.exists(gpio17_dir):
+            with open("/sys/class/gpio/export", "w") as f:
+                f.write("17")
+            time.sleep(0.1)
+        
+        # Als Output setzen
+        with open(f"{gpio17_dir}/direction", "w") as f:
+            f.write("out")
+        
+        # Auf HIGH setzen (3.3V)
+        with open(f"{gpio17_dir}/value", "w") as f:
+            f.write("1")
+        
+        print("   ✅ GPIO 17 auf HIGH (3.3V) gesetzt")
+        return True
+        
+    except Exception as e:
+        print(f"   ❌ GPIO 17 Setup Fehler: {e}")
+        return False
+
 def test_gpio_basic_access(gpio_pin):
     """Grundlegender GPIO Test"""
     print(f"🔍 Teste GPIO{gpio_pin} Grundzugriff...")
@@ -116,9 +144,21 @@ def main():
     print("🏠 Pi5 Heizungs-Messer - Sicherer DHT22 Test")
     print("=" * 48)
     
-    gpio_pin = 18  # DHT22 an GPIO 18
+    gpio_pin = 18  # DHT22 DATA an GPIO 18
+    power_pin = 17 # DHT22 VDD an GPIO 17
     
-    print(f"\n📍 Teste DHT22 an GPIO{gpio_pin}...")
+    print(f"\n📍 Teste DHT22 Verkabelung:")
+    print(f"   VDD (+): GPIO {power_pin} (Pin 11)")
+    print(f"   DATA:    GPIO {gpio_pin} (Pin 12)")
+    print(f"   GND:     Pin 39")
+    
+    # Test 0: GPIO 17 als Stromversorgung aktivieren
+    power_ok = setup_gpio17_power()
+    
+    if not power_ok:
+        print("\n❌ GPIO 17 Stromversorgung fehlgeschlagen!")
+        print("🔧 Führe zuerst aus: bash scripts/fix_gpio_permissions.sh")
+        return
     
     # Test 1: GPIO Grundzugriff
     gpio_ok = test_gpio_basic_access(gpio_pin)
@@ -142,17 +182,22 @@ def main():
     
     if gpio_ok and manual_ok:
         print(f"\n✅ DHT22 Hardware ist grundsätzlich erreichbar!")
-        print("💡 Empfehlungen:")
+        print("💡 Deine Verkabelung:")
+        print(f"   VDD (+): GPIO 17 → Pin 11 (als Stromversorgung)")
+        print(f"   DATA:    GPIO 18 → Pin 12 (Datenleitung)")
+        print(f"   GND:     Pin 39 (Masse)")
+        print("\n🔧 Empfehlungen:")
         print("   1. Hardware funktioniert - Sensor ist angeschlossen")
-        print("   2. Problem liegt in der Adafruit Library")
-        print("   3. Verwende alternative DHT22 Implementierung")
-        print("   4. Oder schließe DHT22 an GPIO 17 an (bessere Library-Unterstützung)")
+        print("   2. GPIO 17 als Stromversorgung ist unkonventionell aber OK")
+        print("   3. Bei Problemen: VDD auf Pin 1 (3.3V) umstecken")
+        print("   4. 10kΩ Pull-up Widerstand zwischen DATA und VDD nicht vergessen")
         
-        # Zeige verfügbare Alternativen
-        print(f"\n🔄 Alternative GPIO Pins für DHT22:")
-        for alt_pin in [17, 22, 23, 24, 25]:
-            alt_gpio_ok = test_gpio_basic_access(alt_pin)
-            print(f"   GPIO{alt_pin}: {'✅ verfügbar' if alt_gpio_ok else '❌ nicht verfügbar'}")
+        # Cleanup GPIO 17
+        try:
+            with open("/sys/class/gpio/unexport", "w") as f:
+                f.write("17")
+        except:
+            pass
     
     else:
         print(f"\n⚠️ DHT22 an GPIO{gpio_pin} problematisch")
