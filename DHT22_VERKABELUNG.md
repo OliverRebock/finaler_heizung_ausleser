@@ -74,6 +74,11 @@ DHT22 Pin 3 (NC) = Not Connected (frei lassen)
 Nach der Verkabelung teste mit:
 ```bash
 cd /home/pi/Heizung_auslesen
+
+# Python Virtual Environment aktivieren
+source heizung_venv/bin/activate
+
+# DHT22 Tests ausführen
 python3 scripts/test_dht22_safe.py
 ```
 
@@ -97,6 +102,11 @@ DHT22 Pin 4 (GND) ──[Schwarz]──→ Pi5 Pin 39 (GND)
 Deine Verkabelung **kann trotzdem funktionieren**, teste sie erst:
 ```bash
 cd /home/pi/Heizung_auslesen
+
+# Virtual Environment aktivieren
+source heizung_venv/bin/activate
+
+# DHT22 Test mit deiner Verkabelung
 python3 scripts/test_dht22_safe.py
 ```
 

@@ -50,10 +50,21 @@ cd Heizung_auslesen
 
 ### 2.2 Dependencies installieren
 ```bash
+# Python Virtual Environment erstellen und aktivieren
+python3 -m venv heizung_venv
+source heizung_venv/bin/activate
+
+# Dependencies installieren
 bash scripts/install_dependencies.sh
 ```
 
 ## ⚡ SCHRITT 3: Hardware testen
+
+⚠️ **WICHTIG: Virtual Environment aktivieren vor jedem Test!**
+```bash
+cd /home/pi/Heizung_auslesen
+source heizung_venv/bin/activate
+```
 
 ### 3.1 DS18B20 Sensoren prüfen (sollten funktionieren)
 ```bash

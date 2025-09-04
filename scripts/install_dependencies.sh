@@ -1,5 +1,5 @@
 #!/bin/bash
-# Pi5 Heizungs Messer - Dependency Installation Script
+# Pi5 Heizungs Messer - Dependency Installation Script  
 # ====================================================
 
 set -e
@@ -16,6 +16,22 @@ if [ ! -f "requirements.txt" ]; then
     echo "curl -fsSL https://raw.githubusercontent.com/OliverRebock/finaler_heizung_ausleser/main/scripts/github_deploy.sh | bash"
     exit 1
 fi
+
+# Python Virtual Environment Setup
+echo ""
+echo "🐍 Python Virtual Environment Setup..."
+if [ ! -d "heizung_venv" ]; then
+    echo "   📦 Erstelle Virtual Environment: heizung_venv"
+    python3 -m venv heizung_venv
+    echo "   ✅ Virtual Environment erstellt"
+else
+    echo "   ✅ Virtual Environment bereits vorhanden"
+fi
+
+# Virtual Environment aktivieren
+echo "   🔄 Aktiviere Virtual Environment..."
+source heizung_venv/bin/activate
+echo "   ✅ Virtual Environment aktiv: $(which python3)"
 
 # Prüfe ob auf Raspberry Pi ausgeführt
 if [[ ! -f /proc/device-tree/model ]] || ! grep -q "Raspberry Pi" /proc/device-tree/model 2>/dev/null; then
@@ -220,14 +236,26 @@ if [ "$REBOOT_REQUIRED" = "true" ]; then
 else
     echo "   2. Docker Services starten: bash scripts/deploy_docker.sh"
 fi
-echo "   4. Sensoren testen: python scripts/test_sensors.py"
-echo "   5. Konfiguration anpassen: nano config/config.ini"
-echo "   6. Service starten: python src/sensor_reader.py"
+
 echo ""
-echo "🔧 Wichtige Befehle:"
-echo "   python scripts/test_sensors.py      # Hardware-Test"
-echo "   bash scripts/deploy_docker.sh       # Docker Services"
-echo "   docker-compose -f config/docker-compose.yml ps  # Container Status"
+echo "🐍 WICHTIG - Virtual Environment verwenden:"
+echo "   Für alle Python-Befehle zuerst aktivieren:"
+echo "   ➤ source heizung_venv/bin/activate"
+echo ""
+echo "🔄 Nächste Schritte:"
+echo "   1. Virtual Environment aktivieren: source heizung_venv/bin/activate"
+echo "   2. Sensoren testen: python3 scripts/test_sensors_direct.py"
+echo "   3. DHT22 testen: python3 scripts/test_dht22_safe.py"
+echo "   4. Docker Services: bash scripts/deploy_docker.sh"
+echo "   5. Konfiguration: nano config/config.ini"
+echo ""
+echo "🔧 Wichtige Befehle (im Virtual Environment):"
+echo "   source heizung_venv/bin/activate    # venv aktivieren"
+echo "   python3 scripts/test_sensors_direct.py  # Hardware-Test"
+echo "   python3 src/sensor_reader.py        # Sensor Reader"
+echo "   deactivate                          # venv deaktivieren"
+echo ""
+echo "📝 Quick Reference: cat PYTHON_VENV_CHEATSHEET.md"
 echo ""
 echo "🌐 Nach Docker-Start verfügbar:"
 echo "   InfluxDB: http://$(hostname -I | awk '{print $1}'):8086"
